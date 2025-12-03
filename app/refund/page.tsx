@@ -11,7 +11,7 @@ export default function RefundPage() {
       </header>
       <main className="max-w-3xl mx-auto py-16 px-6 prose dark:prose-invert">
         <h1 className="text-4xl font-bold mb-8">Refund Policy</h1>
-        <p className="text-muted-foreground mb-8">Last updated: December 2024</p>
+        <p className="text-muted-foreground mb-8">Last updated: December 2025</p>
         
         <h2 className="text-2xl font-bold mt-8 mb-4">1. Free Trial</h2>
         <p>We offer a 7-day free trial for all plans. You will not be charged if you cancel your subscription before the trial period ends.</p>

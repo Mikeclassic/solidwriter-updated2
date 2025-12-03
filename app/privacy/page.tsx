@@ -11,7 +11,7 @@ export default function PrivacyPage() {
       </header>
       <main className="max-w-3xl mx-auto py-16 px-6 prose dark:prose-invert">
         <h1 className="text-4xl font-bold mb-8">Privacy Policy</h1>
-        <p className="text-muted-foreground mb-8">Last updated: December 2024</p>
+        <p className="text-muted-foreground mb-8">Last updated: December 2025</p>
         
         <h2 className="text-2xl font-bold mt-8 mb-4">1. Introduction</h2>
         <p>Welcome to Solidwriter. We respect your privacy and are committed to protecting your personal data.</p>

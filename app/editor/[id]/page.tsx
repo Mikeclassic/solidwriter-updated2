@@ -74,9 +74,6 @@ export default function Editor({ params }: { params: { id: string } }) {
 
   const handleCopy = () => {
       if (!editor) return;
-      // Copy HTML to clipboard for rich text support in some apps, 
-      // but usually plain text is safer for general use. 
-      // Here we grab text. To support rich copy, we need the Clipboard API with 'text/html'.
       const text = editor.getText();
       navigator.clipboard.writeText(text);
       setCopied(true);
@@ -95,39 +92,60 @@ export default function Editor({ params }: { params: { id: string } }) {
                 format: 'a4'
             });
 
-            // 1. Create a visible container off-screen (fixes unresponsiveness)
-            // html2canvas needs the element to be in the DOM and visible (not display:none)
-            const tempContainer = document.createElement('div');
-            tempContainer.className = 'prose'; // Use same tailwind typography
-            tempContainer.style.width = '595px'; // A4 width in px (approx) at 72dpi
-            tempContainer.style.padding = '40px';
-            tempContainer.style.background = 'white';
-            tempContainer.style.position = 'fixed'; // Fixed prevents scrolling issues
-            tempContainer.style.left = '0';
-            tempContainer.style.top = '0';
-            tempContainer.style.zIndex = '-9999'; // Behind everything
+            // 1. Create a dedicated container for PDF generation
+            // We DO NOT use 'prose' or Tailwind classes here to avoid rendering bugs
+            const pdfContainer = document.createElement('div');
             
-            // Add Title and Content
-            tempContainer.innerHTML = `<h1 style="margin-bottom: 20px; font-size: 24px; font-weight: bold;">${title}</h1>` + editor.getHTML();
+            // 2. Apply explicit simple styles for the PDF
+            pdfContainer.style.width = '550px'; // Fixed width for A4
+            pdfContainer.style.fontSize = '12px';
+            pdfContainer.style.lineHeight = '1.5';
+            pdfContainer.style.fontFamily = 'Helvetica, Arial, sans-serif';
+            pdfContainer.style.color = '#000000';
+            pdfContainer.style.backgroundColor = '#ffffff';
             
-            document.body.appendChild(tempContainer);
+            // Add internal styles for headings to look good in PDF
+            const style = document.createElement('style');
+            style.innerHTML = `
+                h1 { font-size: 24px; font-weight: bold; margin-bottom: 12px; }
+                h2 { font-size: 18px; font-weight: bold; margin-top: 16px; margin-bottom: 8px; }
+                h3 { font-size: 14px; font-weight: bold; margin-top: 12px; margin-bottom: 6px; }
+                p { margin-bottom: 10px; text-align: justify; }
+                ul, ol { margin-bottom: 10px; padding-left: 20px; }
+                li { margin-bottom: 4px; }
+                strong { font-weight: bold; }
+                em { font-style: italic; }
+            `;
+            pdfContainer.appendChild(style);
 
-            // 2. Generate PDF
-            await doc.html(tempContainer, {
+            // 3. Inject Content
+            const contentDiv = document.createElement('div');
+            contentDiv.innerHTML = `<h1 style="border-bottom: 1px solid #eee; padding-bottom: 10px;">${title}</h1>${editor.getHTML()}`;
+            pdfContainer.appendChild(contentDiv);
+
+            // 4. Position off-screen but valid in DOM
+            pdfContainer.style.position = 'absolute';
+            pdfContainer.style.left = '-9999px';
+            pdfContainer.style.top = '0';
+            document.body.appendChild(pdfContainer);
+
+            // 5. Generate with html()
+            await doc.html(pdfContainer, {
                 callback: function(pdf) {
                     pdf.save(`${filename}.pdf`);
-                    document.body.removeChild(tempContainer); // Cleanup
+                    document.body.removeChild(pdfContainer); // Cleanup
                 },
-                x: 0,
-                y: 0,
-                width: 595, // Matches A4 width in points
-                windowWidth: 595, // Crucial for responsive layout scaling
-                autoPaging: 'text', // Prevents cutting text in half
+                x: 20,
+                y: 20,
+                width: 555, // target width in the PDF document
+                windowWidth: 600, // window width in CSS pixels
+                autoPaging: 'text',
                 margin: [20, 20, 20, 20]
             });
+
         } catch (error) {
-            console.error("PDF Generation failed", error);
-            alert("Could not generate PDF. Please try again.");
+            console.error("PDF Export Error:", error);
+            alert("PDF generation failed. The document might be too complex for mobile export. Try downloading as HTML.");
         }
     } else {
         const contentToSave = type === 'html' 

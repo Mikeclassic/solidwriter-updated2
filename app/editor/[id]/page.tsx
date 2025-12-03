@@ -1,7 +1,6 @@
-// ... imports equal to previous versions ...
 "use client";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Save, Sparkles, Loader2, Bot, Download, ChevronDown, X, Copy, Check, Undo, Redo, FileText } from "lucide-react";
+import { ArrowLeft, Save, Sparkles, Loader2, Bot, Download, ChevronDown, X, Copy, Check, Undo, Redo, FileText, Mail } from "lucide-react";
 import Link from "next/link";
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -39,7 +38,7 @@ const TONES = [
   "Dramatic"
 ];
 
-// ... convertHtmlToRtf helper (same as before) ...
+// Helper: Convert HTML to Basic RTF
 const convertHtmlToRtf = (html: string) => {
     let rtf = html;
     rtf = rtf.replace(/<h1[^>]*>(.*?)<\/h1>/gi, "\\par\\pard\\sa200\\sl276\\slmult1\\b\\f0\\fs48 $1 \\b0\\fs24\\par");
@@ -76,8 +75,6 @@ export default function Editor({ params }: { params: { id: string } }) {
   const [errorMsg, setErrorMsg] = useState("");
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  
-  // New: Tone state for Editor Sidebar
   const [selectedTone, setSelectedTone] = useState("Professional");
 
   const editor = useEditor({
@@ -110,17 +107,11 @@ export default function Editor({ params }: { params: { id: string } }) {
       setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleExport = (type: 'doc' | 'md' | 'html' | 'rtf') => {
+  const handleExport = (type: 'md' | 'html' | 'rtf') => {
     if (!editor) return;
     const filename = (title || 'document').replace(/[^a-z0-9]/gi, '_').toLowerCase();
     
-    if (type === 'doc') {
-        const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>";
-        const postHtml = "</body></html>";
-        const html = preHtml + `<h1>${title}</h1>` + editor.getHTML() + postHtml;
-        const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-        saveAs(blob, `${filename}.doc`);
-    } else if (type === 'rtf') {
+    if (type === 'rtf') {
         const rtfContent = convertHtmlToRtf(`<h1>${title}</h1>` + editor.getHTML());
         const blob = new Blob([rtfContent], { type: 'application/rtf' });
         saveAs(blob, `${filename}.rtf`);
@@ -144,33 +135,36 @@ export default function Editor({ params }: { params: { id: string } }) {
             method: 'POST',
             body: JSON.stringify({ 
                 prompt, 
-                tone: selectedTone, // Use selected tone
+                tone: selectedTone,
                 documentId: params.id,
                 currentContent: editor.getHTML() 
             })
         });
 
         if (res.status === 403) { setErrorMsg("Limit Reached! Upgrade to continue."); setGenerating(false); return; }
-        if (!res.ok) throw new Error("Failed");
+        if (!res.ok) throw new Error("Generation timeout. Please try again."); // Better error msg
 
         const reader = res.body?.getReader();
         const decoder = new TextDecoder();
         
         editor.commands.clearContent();
-        let accumulatedHtml = "";
-
+        
         if (reader) {
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 const chunk = decoder.decode(value, { stream: true });
-                accumulatedHtml += chunk;
-                editor.commands.setContent(accumulatedHtml);
+                // Simple append for stream visualization
+                // Note: ideally we buffer HTML tags, but Tiptap handles basic streaming okay
+                const current = editor.getHTML();
+                editor.commands.setContent(current + chunk);
             }
         }
         setShowAi(false);
         setPrompt("");
-    } catch (e) { setErrorMsg("Failed to generate content."); } 
+    } catch (e: any) { 
+        setErrorMsg(e.message || "Failed to generate."); 
+    } 
     finally { setGenerating(false); }
   };
 
@@ -193,7 +187,6 @@ export default function Editor({ params }: { params: { id: string } }) {
                 <button onClick={() => setIsExportOpen(!isExportOpen)} className="flex items-center gap-2 px-2 md:px-3 py-2 rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors text-sm font-medium"><Download className="h-4 w-4"/> <span className="hidden md:inline">Export</span> <ChevronDown className="h-3 w-3"/></button>
                 {isExportOpen && (
                     <div className="absolute top-full right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                        <button onClick={() => handleExport('doc')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors border-b border-border/50 flex items-center gap-2"><FileText className="h-4 w-4 text-blue-600"/> Word (.doc)</button>
                         <button onClick={() => handleExport('rtf')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors border-b border-border/50 flex items-center gap-2"><FileText className="h-4 w-4 text-green-600"/> Rich Text (.rtf)</button>
                         <button onClick={() => handleExport('md')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors border-b border-border/50">Markdown</button>
                         <button onClick={() => handleExport('html')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors">HTML</button>
@@ -217,7 +210,6 @@ export default function Editor({ params }: { params: { id: string } }) {
                 </div>
                 {errorMsg && <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-lg">{errorMsg}</div>}
                 
-                {/* TONE SELECTION IN EDITOR */}
                 <div className="mb-4">
                     <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Tone</label>
                     <select value={selectedTone} onChange={(e) => setSelectedTone(e.target.value)} className="w-full p-2 text-sm border rounded-lg bg-background">

@@ -5,6 +5,23 @@ import { Loader2, ArrowRight, Check, Wand2, PenTool, Share2, Megaphone, ArrowLef
 
 type WizardMode = "blog" | "social" | "ads" | "copywriting" | null;
 
+// EXPANDED TONE LIST
+const TONES = [
+  "My Brand Voice", // NEW
+  "Professional",
+  "Casual",
+  "Witty",
+  "Urgent",
+  "Persuasive",
+  "Empathetic",
+  "Authoritative",
+  "Friendly",
+  "Humorous",
+  "Academic",
+  "Minimalist",
+  "Dramatic"
+];
+
 export default function WizardPage() {
   const router = useRouter();
   const [mode, setMode] = useState<WizardMode>(null);
@@ -36,15 +53,14 @@ export default function WizardPage() {
   }, [streamedContent, step]);
 
   // --- STREAM READER HELPER ---
-  // UPDATED: Now returns the full text string
   const readStream = async (res: Response): Promise<string> => {
     if (!res.body) return "";
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     
-    setStep(4); // Move to "Generating" view
+    setStep(4); 
     setStreamedContent("");
-    let fullText = ""; // Accumulator
+    let fullText = ""; 
 
     while (true) {
         const { done, value } = await reader.read();
@@ -106,8 +122,6 @@ export default function WizardPage() {
         // 3. Visualize Stream AND get final content
         const finalContent = await readStream(genRes);
 
-        // 4. EXPLICIT SAVE: Ensure content is saved before redirecting
-        // This prevents the race condition where the server side onCompletion hasn't finished yet
         await fetch(`/api/documents/${doc.id}`, {
             method: 'PATCH',
             body: JSON.stringify({ content: finalContent, title: selectedTitle })
@@ -142,7 +156,6 @@ export default function WizardPage() {
             return;
         }
 
-        // UPDATED: Capture content and save before redirect
         const finalContent = await readStream(genRes);
 
         await fetch(`/api/documents/${doc.id}`, {
@@ -155,7 +168,6 @@ export default function WizardPage() {
     } catch(e: any) { alert(e.message); setLoading(false); }
   };
 
-  // ... REMAINDER OF FILE (RENDERERS) STAYS THE SAME ...
   if (!mode) {
     return (
         <div className="min-h-screen bg-background flex flex-col items-center py-10 px-4">
@@ -187,7 +199,6 @@ export default function WizardPage() {
                 {step === 4 ? 'Writing your content...' : (mode === 'blog' ? 'Blog Writer' : `${mode} Generator`)}
             </h1>
 
-            {/* STEP 4: STREAMING VIEW (New) */}
             {step === 4 && (
                 <div className="space-y-6 animate-in fade-in duration-500">
                     <div className="bg-secondary/20 rounded-xl p-6 h-96 overflow-y-auto border font-mono text-sm leading-relaxed whitespace-pre-wrap relative">
@@ -202,7 +213,6 @@ export default function WizardPage() {
                 </div>
             )}
 
-            {/* BLOG WIZARD STEPS 1-3 */}
             {mode === 'blog' && step < 4 && (
                 <>
                     <div className="flex justify-between mb-8 relative px-2">
@@ -261,7 +271,6 @@ export default function WizardPage() {
                 </>
             )}
 
-            {/* OTHER WIZARDS */}
             {mode !== 'blog' && step < 4 && (
                 <form onSubmit={handleQuickGen} className="space-y-6">
                     <div>
@@ -286,7 +295,14 @@ export default function WizardPage() {
                     )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div><label className="block text-sm font-medium mb-2">Keywords</label><input value={input.keywords} onChange={e=>setInput({...input, keywords: e.target.value})} className="w-full border rounded-lg p-3 bg-background"/></div>
-                        <div><label className="block text-sm font-medium mb-2">Tone</label><select value={input.tone} onChange={e=>setInput({...input, tone: e.target.value})} className="w-full border rounded-lg p-3 bg-background"><option>Professional</option><option>Casual</option><option>Witty</option></select></div>
+                        
+                        {/* TONE SELECTION */}
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Tone</label>
+                            <select value={input.tone} onChange={e=>setInput({...input, tone: e.target.value})} className="w-full border rounded-lg p-3 bg-background">
+                                {TONES.map(t => <option key={t}>{t}</option>)}
+                            </select>
+                        </div>
                     </div>
                     <Button loading={loading} text="Generate Content" icon={<Wand2 className="h-4 w-4"/>} />
                 </form>
@@ -311,7 +327,14 @@ function InputFields({input, setInput}: any) {
             <div><label className="block text-sm font-medium mb-2">Topic</label><input required value={input.topic} onChange={e=>setInput({...input, topic: e.target.value})} className="w-full border rounded-lg p-3 bg-background" placeholder="e.g. Benefits of Yoga"/></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div><label className="block text-sm font-medium mb-2">Keywords</label><input value={input.keywords} onChange={e=>setInput({...input, keywords: e.target.value})} className="w-full border rounded-lg p-3 bg-background"/></div>
-                <div><label className="block text-sm font-medium mb-2">Tone</label><select value={input.tone} onChange={e=>setInput({...input, tone: e.target.value})} className="w-full border rounded-lg p-3 bg-background"><option>Professional</option><option>Casual</option><option>Witty</option><option>Academic</option></select></div>
+                
+                {/* TONE SELECTION */}
+                <div>
+                    <label className="block text-sm font-medium mb-2">Tone</label>
+                    <select value={input.tone} onChange={e=>setInput({...input, tone: e.target.value})} className="w-full border rounded-lg p-3 bg-background">
+                         {TONES.map(t => <option key={t}>{t}</option>)}
+                    </select>
+                </div>
             </div>
         </>
     )

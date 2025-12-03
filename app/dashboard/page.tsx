@@ -64,7 +64,7 @@ export default function Dashboard() {
   // Helper to strip HTML for preview
   const getPreview = (html: string) => {
       if (!html) return "No content yet...";
-      return html.replace(/<[^>]*>?/gm, '').substring(0, 120) + "...";
+      return html.replace(/<[^>]*>?/gm, '').substring(0, 150) + "...";
   };
 
   return (
@@ -170,14 +170,16 @@ export default function Dashboard() {
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex justify-between items-start gap-2">
-                                                <h3 className="font-semibold text-sm md:text-base leading-snug line-clamp-2 text-foreground group-hover:text-primary transition-colors">
+                                                <h3 className="font-semibold text-sm md:text-base leading-snug line-clamp-1 text-foreground group-hover:text-primary transition-colors">
                                                     {doc.title}
                                                 </h3>
-                                                <span className="text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded shrink-0">
+                                                {/* FIXED: Changed bg-secondary to bg-muted to fix the black block issue */}
+                                                <span className="text-[10px] text-muted-foreground bg-muted px-2 py-1 rounded-md shrink-0 whitespace-nowrap">
                                                     {new Date(doc.updatedAt).toLocaleDateString()}
                                                 </span>
                                             </div>
-                                            <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed opacity-80">
+                                            {/* Increased line-clamp to 3 to show more text */}
+                                            <p className="text-xs text-muted-foreground mt-1.5 line-clamp-3 leading-relaxed opacity-80">
                                                 {getPreview(doc.content)}
                                             </p>
                                         </div>

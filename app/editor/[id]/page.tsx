@@ -3,9 +3,11 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Save, Sparkles, Loader2, Bot, Download, ChevronDown, X } from "lucide-react";
 import Link from "next/link";
 import jsPDF from "jspdf";
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
 
 export default function Editor({ params }: { params: { id: string } }) {
-  const [content, setContent] = useState("");
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -13,48 +15,68 @@ export default function Editor({ params }: { params: { id: string } }) {
   const [showAi, setShowAi] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [isExportOpen, setIsExportOpen] = useState(false);
-  
+
+  // Initialize Tiptap Editor
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Placeholder.configure({
+        placeholder: 'Start writing...',
+      }),
+    ],
+    editorProps: {
+      attributes: {
+        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl m-5 focus:outline-none max-w-none',
+      },
+    },
+  });
+
+  // Load Content
   useEffect(() => {
     fetch(`/api/documents/${params.id}`)
       .then(res => res.json())
       .then(data => {
-        setContent(data.content || "");
         setTitle(data.title || "");
+        if (editor && data.content) {
+            // Tiptap handles HTML content automatically
+            editor.commands.setContent(data.content); 
+        }
       });
-  }, [params.id]);
+  }, [params.id, editor]);
 
   const saveDoc = async () => {
+    if (!editor) return;
     setSaving(true);
+    // We save the HTML so formatting is preserved
+    const htmlContent = editor.getHTML();
     await fetch(`/api/documents/${params.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ content, title })
+        body: JSON.stringify({ content: htmlContent, title })
     });
     setSaving(false);
   };
 
   const handleExport = (type: 'pdf' | 'md' | 'html') => {
+    if (!editor) return;
     const filename = (title || 'document').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const htmlContent = editor.getHTML();
+    const textContent = editor.getText();
 
     if (type === 'pdf') {
         const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-        // Clean markdown symbols for PDF
-        const cleanText = content
-            .replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold
-            .replace(/#+\s/g, '') // Remove headings
-            .replace(/\n\s*\n/g, '\n\n')
-            .trim();
-            
         doc.setFontSize(24); doc.text(title, 40, 60);
         doc.setFontSize(12);
-        const splitText = doc.splitTextToSize(cleanText, 515);
+        // For PDF we use plain text for simplicity in this demo
+        const splitText = doc.splitTextToSize(textContent, 515);
         doc.text(splitText, 40, 100);
         doc.save(`${filename}.pdf`);
     } else {
-        const fileContent = type === 'html' 
-            ? `<html><head><title>${title}</title></head><body><h1>${title}</h1><pre>${content}</pre></body></html>` 
-            : content;
+        // Simple HTML-to-Markdown strip for now (better with a library like turndown)
+        const contentToSave = type === 'html' 
+            ? `<html><head><title>${title}</title></head><body><h1>${title}</h1>${htmlContent}</body></html>` 
+            : textContent; 
         
-        const blob = new Blob([fileContent], { type: type === 'html' ? 'text/html' : 'text/markdown' });
+        const blob = new Blob([contentToSave], { type: type === 'html' ? 'text/html' : 'text/markdown' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -67,7 +89,7 @@ export default function Editor({ params }: { params: { id: string } }) {
   };
 
   const generateAI = async () => {
-    if (!prompt) return;
+    if (!prompt || !editor) return;
     setGenerating(true);
     setErrorMsg("");
     
@@ -78,7 +100,7 @@ export default function Editor({ params }: { params: { id: string } }) {
                 prompt, 
                 tone: 'Professional', 
                 documentId: params.id,
-                currentContent: content 
+                currentContent: editor.getHTML() 
             })
         });
 
@@ -88,15 +110,20 @@ export default function Editor({ params }: { params: { id: string } }) {
         const reader = res.body?.getReader();
         const decoder = new TextDecoder();
         
-        // Clear content to stream new version
-        setContent(""); 
+        // Clear editor to stream new content
+        editor.commands.clearContent();
+        let accumulatedHtml = "";
 
         if (reader) {
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 const chunk = decoder.decode(value, { stream: true });
-                setContent(prev => prev + chunk);
+                accumulatedHtml += chunk;
+                // We update content periodically. 
+                // Note: Streaming HTML into Tiptap can be jittery if tags aren't closed.
+                // For smoother exp, we might want to wait for chunks, but this is immediate.
+                editor.commands.setContent(accumulatedHtml);
             }
         }
         setShowAi(false);
@@ -135,12 +162,7 @@ export default function Editor({ params }: { params: { id: string } }) {
 
       <div className="flex flex-1 overflow-hidden relative">
         <div className="flex-1 overflow-y-auto p-4 md:p-8 max-w-4xl mx-auto w-full">
-            <textarea 
-                value={content} 
-                onChange={(e) => setContent(e.target.value)} 
-                placeholder="Start writing..." 
-                className="w-full h-full resize-none focus:outline-none text-base md:text-lg leading-relaxed text-foreground bg-transparent p-2 font-mono"
-            />
+            <EditorContent editor={editor} className="h-full" />
         </div>
 
         {/* AI Sidebar */}

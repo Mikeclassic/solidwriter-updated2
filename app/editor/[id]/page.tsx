@@ -1,3 +1,4 @@
+// ... imports equal to previous versions ...
 "use client";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Save, Sparkles, Loader2, Bot, Download, ChevronDown, X, Copy, Check, Undo, Redo, FileText } from "lucide-react";
@@ -15,55 +16,54 @@ const AI_COMMANDS = [
     "Simplify Language",
     "Add an Intro",
     "Add a Conclusion",
-    "Make Professional",
-    "Make Casual / Witty",
     "Improve Flow",
     "Summarize Key Points",
     "Turn into Bullet Points",
     "Write a catchy Headline"
 ];
 
-// Helper: Convert HTML to Basic RTF
+// EXPANDED TONE LIST
+const TONES = [
+  "My Brand Voice",
+  "Professional",
+  "Casual",
+  "Witty",
+  "Urgent",
+  "Persuasive",
+  "Empathetic",
+  "Authoritative",
+  "Friendly",
+  "Humorous",
+  "Academic",
+  "Minimalist",
+  "Dramatic"
+];
+
+// ... convertHtmlToRtf helper (same as before) ...
 const convertHtmlToRtf = (html: string) => {
-    // 1. Basic cleaning
     let rtf = html;
-    
-    // 2. Replace Block Elements with RTF Paragaraphs & Formatting
-    // Headings (Bold, Larger size)
     rtf = rtf.replace(/<h1[^>]*>(.*?)<\/h1>/gi, "\\par\\pard\\sa200\\sl276\\slmult1\\b\\f0\\fs48 $1 \\b0\\fs24\\par");
     rtf = rtf.replace(/<h2[^>]*>(.*?)<\/h2>/gi, "\\par\\pard\\sa200\\sl276\\slmult1\\b\\f0\\fs36 $1 \\b0\\fs24\\par");
     rtf = rtf.replace(/<h3[^>]*>(.*?)<\/h3>/gi, "\\par\\pard\\sa200\\sl276\\slmult1\\b\\f0\\fs28 $1 \\b0\\fs24\\par");
-    
-    // Formatting (Bold, Italic)
     rtf = rtf.replace(/<strong[^>]*>(.*?)<\/strong>/gi, "\\b $1 \\b0");
     rtf = rtf.replace(/<b[^>]*>(.*?)<\/b>/gi, "\\b $1 \\b0");
     rtf = rtf.replace(/<em[^>]*>(.*?)<\/em>/gi, "\\i $1 \\i0");
     rtf = rtf.replace(/<i[^>]*>(.*?)<\/i>/gi, "\\i $1 \\i0");
-
-    // Paragraphs and Breaks
     rtf = rtf.replace(/<p[^>]*>/gi, "\\par\\pard\\sa200\\sl276\\slmult1 ");
     rtf = rtf.replace(/<\/p>/gi, "\\par");
     rtf = rtf.replace(/<br\s*\/?>/gi, "\\line ");
     rtf = rtf.replace(/<\/li>/gi, "\\par");
     rtf = rtf.replace(/<li[^>]*>/gi, "\\par\\bullet\\tab ");
-
-    // 3. Strip remaining HTML tags
     rtf = rtf.replace(/<[^>]+>/g, "");
-
-    // 4. Decode HTML Entities (Basic set)
     rtf = rtf.replace(/&nbsp;/g, " ");
     rtf = rtf.replace(/&amp;/g, "&");
     rtf = rtf.replace(/&lt;/g, "<");
     rtf = rtf.replace(/&gt;/g, ">");
     rtf = rtf.replace(/&quot;/g, '"');
     rtf = rtf.replace(/&#39;/g, "'");
-
-    // 5. Wrap in RTF Header/Footer
-    // Header defines Font Table (Arial) and Color Table
     const header = "{\\rtf1\\ansi\\ansicpg1252\\deff0\\nouicompat\\deflang1033{\\fonttbl{\\f0\\fnil\\fcharset0 Arial;}}\n";
     const body = "\\viewkind4\\uc1\\pard\\sa200\\sl276\\slmult1\\f0\\fs24\\lang9 ";
     const footer = "\n}";
-
     return header + body + rtf + footer;
 };
 
@@ -76,32 +76,21 @@ export default function Editor({ params }: { params: { id: string } }) {
   const [errorMsg, setErrorMsg] = useState("");
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  
+  // New: Tone state for Editor Sidebar
+  const [selectedTone, setSelectedTone] = useState("Professional");
 
-  // Initialize Tiptap Editor
   const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Placeholder.configure({
-        placeholder: 'Start writing...',
-      }),
-    ],
-    editorProps: {
-      attributes: {
-        class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl m-5 focus:outline-none max-w-none',
-        id: 'editor-content'
-      },
-    },
+    extensions: [StarterKit, Placeholder.configure({ placeholder: 'Start writing...' })],
+    editorProps: { attributes: { class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl m-5 focus:outline-none max-w-none', id: 'editor-content' } },
   });
 
-  // Load Content
   useEffect(() => {
     fetch(`/api/documents/${params.id}`)
       .then(res => res.json())
       .then(data => {
         setTitle(data.title || "");
-        if (editor && data.content) {
-            editor.commands.setContent(data.content); 
-        }
+        if (editor && data.content) editor.commands.setContent(data.content); 
       });
   }, [params.id, editor]);
 
@@ -109,10 +98,7 @@ export default function Editor({ params }: { params: { id: string } }) {
     if (!editor) return;
     setSaving(true);
     const htmlContent = editor.getHTML();
-    await fetch(`/api/documents/${params.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ content: htmlContent, title })
-    });
+    await fetch(`/api/documents/${params.id}`, { method: 'PATCH', body: JSON.stringify({ content: htmlContent, title }) });
     setSaving(false);
   };
 
@@ -124,13 +110,17 @@ export default function Editor({ params }: { params: { id: string } }) {
       setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleExport = (type: 'rtf' | 'md' | 'html') => {
+  const handleExport = (type: 'doc' | 'md' | 'html' | 'rtf') => {
     if (!editor) return;
     const filename = (title || 'document').replace(/[^a-z0-9]/gi, '_').toLowerCase();
     
-    if (type === 'rtf') {
-        // RICH TEXT FORMAT (RTF) EXPORT
-        // Safe for mobile, opens in Word/Docs, preserves Bold/Headings
+    if (type === 'doc') {
+        const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>";
+        const postHtml = "</body></html>";
+        const html = preHtml + `<h1>${title}</h1>` + editor.getHTML() + postHtml;
+        const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+        saveAs(blob, `${filename}.doc`);
+    } else if (type === 'rtf') {
         const rtfContent = convertHtmlToRtf(`<h1>${title}</h1>` + editor.getHTML());
         const blob = new Blob([rtfContent], { type: 'application/rtf' });
         saveAs(blob, `${filename}.rtf`);
@@ -138,7 +128,6 @@ export default function Editor({ params }: { params: { id: string } }) {
         const contentToSave = type === 'html' 
             ? `<html><head><title>${title}</title></head><body><h1>${title}</h1>${editor.getHTML()}</body></html>` 
             : editor.getText();
-        
         const blob = new Blob([contentToSave], { type: type === 'html' ? 'text/html' : 'text/markdown' });
         saveAs(blob, `${filename}.${type}`);
     }
@@ -155,7 +144,7 @@ export default function Editor({ params }: { params: { id: string } }) {
             method: 'POST',
             body: JSON.stringify({ 
                 prompt, 
-                tone: 'Professional', 
+                tone: selectedTone, // Use selected tone
                 documentId: params.id,
                 currentContent: editor.getHTML() 
             })
@@ -194,58 +183,24 @@ export default function Editor({ params }: { params: { id: string } }) {
         </div>
         
         <div className="flex items-center gap-1 md:gap-2">
-            
-            {/* Undo / Redo Group */}
             <div className="flex items-center bg-secondary/50 rounded-lg p-0.5 mr-2">
-                <button 
-                    onClick={() => editor?.chain().focus().undo().run()}
-                    disabled={!editor?.can().undo()}
-                    className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-background rounded-md transition-all disabled:opacity-30"
-                    title="Undo"
-                >
-                    <Undo className="h-4 w-4"/>
-                </button>
+                <button onClick={() => editor?.chain().focus().undo().run()} disabled={!editor?.can().undo()} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-background rounded-md transition-all disabled:opacity-30"><Undo className="h-4 w-4"/></button>
                 <div className="w-px h-4 bg-border mx-0.5"></div>
-                <button 
-                    onClick={() => editor?.chain().focus().redo().run()}
-                    disabled={!editor?.can().redo()}
-                    className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-background rounded-md transition-all disabled:opacity-30"
-                    title="Redo"
-                >
-                    <Redo className="h-4 w-4"/>
-                </button>
+                <button onClick={() => editor?.chain().focus().redo().run()} disabled={!editor?.can().redo()} className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-background rounded-md transition-all disabled:opacity-30"><Redo className="h-4 w-4"/></button>
             </div>
-
-            {/* Copy Button */}
-            <button 
-                onClick={handleCopy}
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors relative group"
-                title="Copy to Clipboard"
-            >
-                {copied ? <Check className="h-4 w-4 md:h-5 md:w-5 text-green-600"/> : <Copy className="h-4 w-4 md:h-5 md:w-5"/>}
-                {copied && <span className="absolute top-10 right-0 bg-black text-white text-xs px-2 py-1 rounded shadow-lg z-50">Copied!</span>}
-            </button>
-
-            {/* Export Dropdown */}
+            <button onClick={handleCopy} className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors relative group">{copied ? <Check className="h-4 w-4 md:h-5 md:w-5 text-green-600"/> : <Copy className="h-4 w-4 md:h-5 md:w-5"/>}{copied && <span className="absolute top-10 right-0 bg-black text-white text-xs px-2 py-1 rounded shadow-lg z-50">Copied!</span>}</button>
             <div className="relative">
-                <button onClick={() => setIsExportOpen(!isExportOpen)} className="flex items-center gap-2 px-2 md:px-3 py-2 rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors text-sm font-medium">
-                    <Download className="h-4 w-4"/> <span className="hidden md:inline">Export</span> <ChevronDown className="h-3 w-3"/>
-                </button>
+                <button onClick={() => setIsExportOpen(!isExportOpen)} className="flex items-center gap-2 px-2 md:px-3 py-2 rounded-lg border border-border text-muted-foreground hover:text-foreground transition-colors text-sm font-medium"><Download className="h-4 w-4"/> <span className="hidden md:inline">Export</span> <ChevronDown className="h-3 w-3"/></button>
                 {isExportOpen && (
                     <div className="absolute top-full right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                        <button onClick={() => handleExport('rtf')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors border-b border-border/50 flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-blue-600"/> Download Rich Text (.rtf)
-                        </button>
-                        <button onClick={() => handleExport('md')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors border-b border-border/50">Download Markdown</button>
-                        <button onClick={() => handleExport('html')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors">Download HTML</button>
+                        <button onClick={() => handleExport('doc')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors border-b border-border/50 flex items-center gap-2"><FileText className="h-4 w-4 text-blue-600"/> Word (.doc)</button>
+                        <button onClick={() => handleExport('rtf')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors border-b border-border/50 flex items-center gap-2"><FileText className="h-4 w-4 text-green-600"/> Rich Text (.rtf)</button>
+                        <button onClick={() => handleExport('md')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors border-b border-border/50">Markdown</button>
+                        <button onClick={() => handleExport('html')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors">HTML</button>
                     </div>
                 )}
             </div>
-
-            {/* Save Button */}
-            <button onClick={saveDoc} className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition-colors text-sm" disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="h-4 w-4"/>} <span className="hidden md:inline">Save</span>
-            </button>
+            <button onClick={saveDoc} className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition-colors text-sm" disabled={saving}>{saving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="h-4 w-4"/>} <span className="hidden md:inline">Save</span></button>
         </div>
       </header>
 
@@ -254,7 +209,6 @@ export default function Editor({ params }: { params: { id: string } }) {
             <EditorContent editor={editor} className="h-full min-h-[50vh]" />
         </div>
 
-        {/* AI Sidebar */}
         {showAi && (
             <div className="w-full md:w-96 border-l bg-card p-4 md:p-6 flex flex-col shadow-2xl absolute md:relative right-0 h-full z-20 animate-in slide-in-from-right duration-300">
                 <div className="flex justify-between items-center mb-4 md:mb-6">
@@ -263,46 +217,31 @@ export default function Editor({ params }: { params: { id: string } }) {
                 </div>
                 {errorMsg && <div className="mb-4 p-3 bg-destructive/10 text-destructive text-sm rounded-lg">{errorMsg}</div>}
                 
-                <div className="bg-primary/5 p-4 rounded-xl mb-6 overflow-y-auto max-h-[40vh] md:max-h-none">
+                {/* TONE SELECTION IN EDITOR */}
+                <div className="mb-4">
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1 block">Tone</label>
+                    <select value={selectedTone} onChange={(e) => setSelectedTone(e.target.value)} className="w-full p-2 text-sm border rounded-lg bg-background">
+                        {TONES.map(t => <option key={t}>{t}</option>)}
+                    </select>
+                </div>
+
+                <div className="bg-primary/5 p-4 rounded-xl mb-6 overflow-y-auto max-h-[30vh] md:max-h-none">
                     <p className="text-sm text-muted-foreground font-medium mb-3">Quick Commands:</p>
                     <div className="flex flex-wrap gap-2">
-                        {AI_COMMANDS.map(cmd => (
-                            <button 
-                                key={cmd} 
-                                onClick={() => setPrompt(cmd)} 
-                                className="text-xs bg-white border border-border px-3 py-1.5 rounded-full hover:border-primary hover:text-primary hover:shadow-sm transition-all whitespace-nowrap"
-                            >
-                                {cmd}
-                            </button>
-                        ))}
+                        {AI_COMMANDS.map(cmd => <button key={cmd} onClick={() => setPrompt(cmd)} className="text-xs bg-white border border-border px-3 py-1.5 rounded-full hover:border-primary hover:text-primary hover:shadow-sm transition-all whitespace-nowrap">{cmd}</button>)}
                     </div>
                 </div>
 
                 <div className="space-y-4 flex-1 flex flex-col">
-                    <textarea 
-                        className="w-full border rounded-xl p-4 text-sm bg-background flex-1 md:flex-none md:h-32 resize-none focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all shadow-sm" 
-                        placeholder="What should I do with your content?" 
-                        value={prompt} 
-                        onChange={(e) => setPrompt(e.target.value)}
-                    />
-                    <button onClick={generateAI} disabled={generating || !prompt} className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-bold hover:opacity-90 disabled:opacity-50 flex justify-center gap-2 shadow-lg shadow-primary/20">
-                        {generating ? <Loader2 className="h-5 w-5 animate-spin"/> : <Sparkles className="h-5 w-5"/>} 
-                        {generating ? "Thinking..." : "Generate & Rewrite"}
-                    </button>
+                    <textarea className="w-full border rounded-xl p-4 text-sm bg-background flex-1 md:flex-none md:h-32 resize-none focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all shadow-sm" placeholder="What should I do with your content?" value={prompt} onChange={(e) => setPrompt(e.target.value)} />
+                    <button onClick={generateAI} disabled={generating || !prompt} className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-bold hover:opacity-90 disabled:opacity-50 flex justify-center gap-2 shadow-lg shadow-primary/20">{generating ? <Loader2 className="h-5 w-5 animate-spin"/> : <Sparkles className="h-5 w-5"/>} {generating ? "Thinking..." : "Generate & Rewrite"}</button>
                 </div>
             </div>
         )}
       </div>
 
-      {/* Floating Action Button (FAB) */}
       {!showAi && (
-        <button 
-            onClick={() => setShowAi(true)}
-            className="fixed bottom-6 right-6 md:bottom-8 md:right-8 h-12 w-12 md:h-14 md:w-14 bg-primary text-primary-foreground rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 z-50 group"
-            title="Open AI Assistant"
-        >
-            <Sparkles className="h-6 w-6 md:h-7 md:w-7 group-hover:rotate-12 transition-transform"/>
-        </button>
+        <button onClick={() => setShowAi(true)} className="fixed bottom-6 right-6 md:bottom-8 md:right-8 h-12 w-12 md:h-14 md:w-14 bg-primary text-primary-foreground rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-200 z-50 group" title="Open AI Assistant"><Sparkles className="h-6 w-6 md:h-7 md:w-7 group-hover:rotate-12 transition-transform"/></button>
       )}
     </div>
   );

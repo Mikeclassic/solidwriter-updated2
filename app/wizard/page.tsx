@@ -36,20 +36,25 @@ export default function WizardPage() {
   }, [streamedContent, step]);
 
   // --- STREAM READER HELPER ---
-  const readStream = async (res: Response) => {
-    if (!res.body) return;
+  // UPDATED: Now returns the full text string
+  const readStream = async (res: Response): Promise<string> => {
+    if (!res.body) return "";
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     
     setStep(4); // Move to "Generating" view
     setStreamedContent("");
+    let fullText = ""; // Accumulator
 
     while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
+        fullText += chunk;
         setStreamedContent((prev) => prev + chunk);
     }
+    
+    return fullText;
   };
 
   const handleBlogTitles = async (e: React.FormEvent) => {
@@ -98,10 +103,17 @@ export default function WizardPage() {
             return;
         }
 
-        // 3. Visualize Stream
-        await readStream(genRes);
+        // 3. Visualize Stream AND get final content
+        const finalContent = await readStream(genRes);
 
-        // 4. Redirect
+        // 4. EXPLICIT SAVE: Ensure content is saved before redirecting
+        // This prevents the race condition where the server side onCompletion hasn't finished yet
+        await fetch(`/api/documents/${doc.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ content: finalContent, title: selectedTitle })
+        });
+
+        // 5. Redirect
         router.push(`/editor/${doc.id}`);
 
     } catch(e: any) { alert(e.message); setLoading(false); }
@@ -130,14 +142,20 @@ export default function WizardPage() {
             return;
         }
 
-        await readStream(genRes);
+        // UPDATED: Capture content and save before redirect
+        const finalContent = await readStream(genRes);
+
+        await fetch(`/api/documents/${doc.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ content: finalContent, title: displayTitle })
+        });
+
         router.push(`/editor/${doc.id}`);
 
     } catch(e: any) { alert(e.message); setLoading(false); }
   };
 
-  // --- RENDERERS ---
-
+  // ... REMAINDER OF FILE (RENDERERS) STAYS THE SAME ...
   if (!mode) {
     return (
         <div className="min-h-screen bg-background flex flex-col items-center py-10 px-4">

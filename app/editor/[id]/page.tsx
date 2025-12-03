@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Save, Sparkles, Loader2, Bot, Download, ChevronDown, X, Copy, Check, Undo, Redo } from "lucide-react";
+import { ArrowLeft, Save, Sparkles, Loader2, Bot, Download, ChevronDown, X, Copy, Check, Undo, Redo, FileText } from "lucide-react";
 import Link from "next/link";
-import jsPDF from "jspdf";
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -80,73 +79,33 @@ export default function Editor({ params }: { params: { id: string } }) {
       setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleExport = async (type: 'pdf' | 'md' | 'html') => {
+  const handleExport = (type: 'doc' | 'md' | 'html') => {
     if (!editor) return;
     const filename = (title || 'document').replace(/[^a-z0-9]/gi, '_').toLowerCase();
     
-    if (type === 'pdf') {
-        try {
-            const doc = new jsPDF({
-                orientation: 'portrait',
-                unit: 'pt',
-                format: 'a4'
-            });
-
-            // 1. Create a dedicated container for PDF generation
-            // We DO NOT use 'prose' or Tailwind classes here to avoid rendering bugs
-            const pdfContainer = document.createElement('div');
-            
-            // 2. Apply explicit simple styles for the PDF
-            pdfContainer.style.width = '550px'; // Fixed width for A4
-            pdfContainer.style.fontSize = '12px';
-            pdfContainer.style.lineHeight = '1.5';
-            pdfContainer.style.fontFamily = 'Helvetica, Arial, sans-serif';
-            pdfContainer.style.color = '#000000';
-            pdfContainer.style.backgroundColor = '#ffffff';
-            
-            // Add internal styles for headings to look good in PDF
-            const style = document.createElement('style');
-            style.innerHTML = `
-                h1 { font-size: 24px; font-weight: bold; margin-bottom: 12px; }
-                h2 { font-size: 18px; font-weight: bold; margin-top: 16px; margin-bottom: 8px; }
-                h3 { font-size: 14px; font-weight: bold; margin-top: 12px; margin-bottom: 6px; }
-                p { margin-bottom: 10px; text-align: justify; }
-                ul, ol { margin-bottom: 10px; padding-left: 20px; }
-                li { margin-bottom: 4px; }
-                strong { font-weight: bold; }
-                em { font-style: italic; }
-            `;
-            pdfContainer.appendChild(style);
-
-            // 3. Inject Content
-            const contentDiv = document.createElement('div');
-            contentDiv.innerHTML = `<h1 style="border-bottom: 1px solid #eee; padding-bottom: 10px;">${title}</h1>${editor.getHTML()}`;
-            pdfContainer.appendChild(contentDiv);
-
-            // 4. Position off-screen but valid in DOM
-            pdfContainer.style.position = 'absolute';
-            pdfContainer.style.left = '-9999px';
-            pdfContainer.style.top = '0';
-            document.body.appendChild(pdfContainer);
-
-            // 5. Generate with html()
-            await doc.html(pdfContainer, {
-                callback: function(pdf) {
-                    pdf.save(`${filename}.pdf`);
-                    document.body.removeChild(pdfContainer); // Cleanup
-                },
-                x: 20,
-                y: 20,
-                width: 555, // target width in the PDF document
-                windowWidth: 600, // window width in CSS pixels
-                autoPaging: 'text',
-                margin: [20, 20, 20, 20]
-            });
-
-        } catch (error) {
-            console.error("PDF Export Error:", error);
-            alert("PDF generation failed. The document might be too complex for mobile export. Try downloading as HTML.");
-        }
+    if (type === 'doc') {
+        // MICROSOFT WORD EXPORT (Rich Text)
+        // We wrap the HTML in a specific header that Word recognizes.
+        const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' " +
+            "xmlns:w='urn:schemas-microsoft-com:office:word' " +
+            "xmlns='http://www.w3.org/TR/REC-html40'>" +
+            "<head><meta charset='utf-8'><title>" + title + "</title></head><body>";
+        
+        const footer = "</body></html>";
+        const sourceHTML = header + `<h1>${title}</h1>` + editor.getHTML() + footer;
+        
+        const blob = new Blob(['\ufeff', sourceHTML], {
+            type: 'application/msword'
+        });
+        
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${filename}.doc`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
     } else {
         const contentToSave = type === 'html' 
             ? `<html><head><title>${title}</title></head><body><h1>${title}</h1>${editor.getHTML()}</body></html>` 
@@ -252,7 +211,9 @@ export default function Editor({ params }: { params: { id: string } }) {
                 </button>
                 {isExportOpen && (
                     <div className="absolute top-full right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                        <button onClick={() => handleExport('pdf')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors border-b border-border/50">Download PDF (Rich)</button>
+                        <button onClick={() => handleExport('doc')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors border-b border-border/50 flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-blue-600"/> Download Word (.doc)
+                        </button>
                         <button onClick={() => handleExport('md')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors border-b border-border/50">Download Markdown</button>
                         <button onClick={() => handleExport('html')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors">Download HTML</button>
                     </div>

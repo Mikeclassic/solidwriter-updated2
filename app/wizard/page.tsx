@@ -1,13 +1,12 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, ArrowRight, Check, Wand2, PenTool, Share2, Megaphone, ArrowLeft, LayoutTemplate, FileText } from "lucide-react";
+import { Loader2, ArrowRight, Check, Wand2, PenTool, Share2, Megaphone, ArrowLeft, LayoutTemplate, FileText, Mail } from "lucide-react";
 
-type WizardMode = "blog" | "social" | "ads" | "copywriting" | null;
+type WizardMode = "blog" | "social" | "ads" | "copywriting" | "email" | null;
 
-// EXPANDED TONE LIST
 const TONES = [
-  "My Brand Voice", // NEW
+  "My Brand Voice",
   "Professional",
   "Casual",
   "Witty",
@@ -38,21 +37,22 @@ export default function WizardPage() {
     keywords: "", 
     tone: "Professional",
     platform: "LinkedIn",
-    framework: "AIDA" 
+    framework: "AIDA",
+    // Email specific
+    recipient: "",
+    goal: ""
   });
 
   const [generatedTitles, setGeneratedTitles] = useState<string[]>([]);
   const [selectedTitle, setSelectedTitle] = useState("");
   const [outline, setOutline] = useState<string[]>([]);
 
-  // Scroll to bottom during streaming
   useEffect(() => {
     if (step === 4) {
         contentEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [streamedContent, step]);
 
-  // --- STREAM READER HELPER ---
   const readStream = async (res: Response): Promise<string> => {
     if (!res.body) return "";
     const reader = res.body.getReader();
@@ -102,11 +102,9 @@ export default function WizardPage() {
   const handleBlogFinal = async () => {
     setLoading(true);
     try {
-        // 1. Create Shell
         const docRes = await fetch('/api/documents', { method: 'POST', body: JSON.stringify({ title: selectedTitle }) });
         const doc = await docRes.json();
         
-        // 2. Start Stream
         const genRes = await fetch('/api/generate', {
             method: 'POST',
             body: JSON.stringify({ type: 'article', title: selectedTitle, outline, documentId: doc.id, ...input })
@@ -114,12 +112,11 @@ export default function WizardPage() {
 
         if (!genRes.ok) {
             if(genRes.status === 403) alert("Limit reached! Upgrade plan.");
-            else throw new Error("Generation failed");
+            else throw new Error("Generation timeout. Try again.");
             setLoading(false);
             return;
         }
 
-        // 3. Visualize Stream AND get final content
         const finalContent = await readStream(genRes);
 
         await fetch(`/api/documents/${doc.id}`, {
@@ -127,7 +124,6 @@ export default function WizardPage() {
             body: JSON.stringify({ content: finalContent, title: selectedTitle })
         });
 
-        // 5. Redirect
         router.push(`/editor/${doc.id}`);
 
     } catch(e: any) { alert(e.message); setLoading(false); }
@@ -137,7 +133,7 @@ export default function WizardPage() {
     e.preventDefault();
     setLoading(true);
     try {
-        const titleMap: Record<string, string> = { social: "Social Post", ads: "Ad Copy", copywriting: "Marketing Copy" };
+        const titleMap: Record<string, string> = { social: "Social Post", ads: "Ad Copy", copywriting: "Marketing Copy", email: "Email Draft" };
         const safeTitle = titleMap[mode!] || "Content"; 
         const displayTitle = `${safeTitle}: ${input.topic.substring(0, 20)}...`;
 
@@ -151,7 +147,7 @@ export default function WizardPage() {
 
         if (!genRes.ok) {
             if(genRes.status === 403) alert("Limit reached!");
-            else throw new Error("Generation failed");
+            else throw new Error("Generation failed or timed out.");
             setLoading(false);
             return;
         }
@@ -173,8 +169,9 @@ export default function WizardPage() {
         <div className="min-h-screen bg-background flex flex-col items-center py-10 px-4">
             <h1 className="text-3xl font-bold mb-2 text-center">Create Content</h1>
             <p className="text-muted-foreground mb-10 text-center">Select a workflow to get started.</p>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 max-w-6xl w-full">
                 <Card icon={<PenTool className="h-8 w-8 text-primary"/>} title="Blog Post" desc="SEO Articles" onClick={() => setMode("blog")} />
+                <Card icon={<Mail className="h-8 w-8 text-primary"/>} title="Email" desc="Newsletters / Sales" onClick={() => setMode("email")} />
                 <Card icon={<Share2 className="h-8 w-8 text-primary"/>} title="Social Media" desc="LinkedIn / X / IG" onClick={() => setMode("social")} />
                 <Card icon={<Megaphone className="h-8 w-8 text-primary"/>} title="Advertisement" desc="Ad Copy Variations" onClick={() => setMode("ads")} />
                 <Card icon={<LayoutTemplate className="h-8 w-8 text-primary"/>} title="Copywriting" desc="Marketing Frameworks" onClick={() => setMode("copywriting")} />
@@ -215,6 +212,7 @@ export default function WizardPage() {
 
             {mode === 'blog' && step < 4 && (
                 <>
+                    {/* Blog Steps (Same as before) */}
                     <div className="flex justify-between mb-8 relative px-2">
                         <div className="absolute top-1/2 left-0 w-full h-1 bg-secondary -z-0"></div>
                         {[{n:1,l:"Topic"},{n:2,l:"Title"},{n:3,l:"Outline"},{n:4,l:"Draft"}].map((s) => (
@@ -233,7 +231,7 @@ export default function WizardPage() {
                             <Button loading={loading} text="Generate Titles" />
                         </form>
                     )}
-
+                    {/* Steps 2 and 3 omitted for brevity but remain the same in logic */}
                     {step === 2 && (
                         <div className="space-y-6">
                             <h2 className="text-lg font-semibold text-center">Select a Title</h2>
@@ -248,7 +246,6 @@ export default function WizardPage() {
                             </div>
                         </div>
                     )}
-
                     {step === 3 && (
                         <div className="space-y-6">
                             <h2 className="text-lg font-semibold text-center">Edit Outline</h2>
@@ -274,9 +271,24 @@ export default function WizardPage() {
             {mode !== 'blog' && step < 4 && (
                 <form onSubmit={handleQuickGen} className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium mb-2">Topic / Product</label>
-                        <textarea required rows={3} value={input.topic} onChange={e=>setInput({...input, topic: e.target.value})} className="w-full border rounded-lg p-3 bg-background" placeholder="Describe content..."/>
+                        <label className="block text-sm font-medium mb-2">Topic / Subject</label>
+                        <textarea required rows={3} value={input.topic} onChange={e=>setInput({...input, topic: e.target.value})} className="w-full border rounded-lg p-3 bg-background" placeholder="Describe the content..."/>
                     </div>
+                    
+                    {/* EMAIL SPECIFIC INPUTS */}
+                    {mode === 'email' && (
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium mb-2">Recipient</label>
+                                <input value={input.recipient} onChange={e=>setInput({...input, recipient: e.target.value})} className="w-full border rounded-lg p-3 bg-background" placeholder="e.g. Clients, Boss"/>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-2">Goal / Call to Action</label>
+                                <input value={input.goal} onChange={e=>setInput({...input, goal: e.target.value})} className="w-full border rounded-lg p-3 bg-background" placeholder="e.g. Schedule a meeting"/>
+                            </div>
+                         </div>
+                    )}
+
                     {(mode === 'social' || mode === 'ads') && (
                         <div>
                             <label className="block text-sm font-medium mb-2">Platform</label>
@@ -327,8 +339,6 @@ function InputFields({input, setInput}: any) {
             <div><label className="block text-sm font-medium mb-2">Topic</label><input required value={input.topic} onChange={e=>setInput({...input, topic: e.target.value})} className="w-full border rounded-lg p-3 bg-background" placeholder="e.g. Benefits of Yoga"/></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div><label className="block text-sm font-medium mb-2">Keywords</label><input value={input.keywords} onChange={e=>setInput({...input, keywords: e.target.value})} className="w-full border rounded-lg p-3 bg-background"/></div>
-                
-                {/* TONE SELECTION */}
                 <div>
                     <label className="block text-sm font-medium mb-2">Tone</label>
                     <select value={input.tone} onChange={e=>setInput({...input, tone: e.target.value})} className="w-full border rounded-lg p-3 bg-background">

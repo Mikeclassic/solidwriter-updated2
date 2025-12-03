@@ -23,6 +23,50 @@ const AI_COMMANDS = [
     "Write a catchy Headline"
 ];
 
+// Helper: Convert HTML to Basic RTF
+const convertHtmlToRtf = (html: string) => {
+    // 1. Basic cleaning
+    let rtf = html;
+    
+    // 2. Replace Block Elements with RTF Paragaraphs & Formatting
+    // Headings (Bold, Larger size)
+    rtf = rtf.replace(/<h1[^>]*>(.*?)<\/h1>/gi, "\\par\\pard\\sa200\\sl276\\slmult1\\b\\f0\\fs48 $1 \\b0\\fs24\\par");
+    rtf = rtf.replace(/<h2[^>]*>(.*?)<\/h2>/gi, "\\par\\pard\\sa200\\sl276\\slmult1\\b\\f0\\fs36 $1 \\b0\\fs24\\par");
+    rtf = rtf.replace(/<h3[^>]*>(.*?)<\/h3>/gi, "\\par\\pard\\sa200\\sl276\\slmult1\\b\\f0\\fs28 $1 \\b0\\fs24\\par");
+    
+    // Formatting (Bold, Italic)
+    rtf = rtf.replace(/<strong[^>]*>(.*?)<\/strong>/gi, "\\b $1 \\b0");
+    rtf = rtf.replace(/<b[^>]*>(.*?)<\/b>/gi, "\\b $1 \\b0");
+    rtf = rtf.replace(/<em[^>]*>(.*?)<\/em>/gi, "\\i $1 \\i0");
+    rtf = rtf.replace(/<i[^>]*>(.*?)<\/i>/gi, "\\i $1 \\i0");
+
+    // Paragraphs and Breaks
+    rtf = rtf.replace(/<p[^>]*>/gi, "\\par\\pard\\sa200\\sl276\\slmult1 ");
+    rtf = rtf.replace(/<\/p>/gi, "\\par");
+    rtf = rtf.replace(/<br\s*\/?>/gi, "\\line ");
+    rtf = rtf.replace(/<\/li>/gi, "\\par");
+    rtf = rtf.replace(/<li[^>]*>/gi, "\\par\\bullet\\tab ");
+
+    // 3. Strip remaining HTML tags
+    rtf = rtf.replace(/<[^>]+>/g, "");
+
+    // 4. Decode HTML Entities (Basic set)
+    rtf = rtf.replace(/&nbsp;/g, " ");
+    rtf = rtf.replace(/&amp;/g, "&");
+    rtf = rtf.replace(/&lt;/g, "<");
+    rtf = rtf.replace(/&gt;/g, ">");
+    rtf = rtf.replace(/&quot;/g, '"');
+    rtf = rtf.replace(/&#39;/g, "'");
+
+    // 5. Wrap in RTF Header/Footer
+    // Header defines Font Table (Arial) and Color Table
+    const header = "{\\rtf1\\ansi\\ansicpg1252\\deff0\\nouicompat\\deflang1033{\\fonttbl{\\f0\\fnil\\fcharset0 Arial;}}\n";
+    const body = "\\viewkind4\\uc1\\pard\\sa200\\sl276\\slmult1\\f0\\fs24\\lang9 ";
+    const footer = "\n}";
+
+    return header + body + rtf + footer;
+};
+
 export default function Editor({ params }: { params: { id: string } }) {
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
@@ -80,25 +124,16 @@ export default function Editor({ params }: { params: { id: string } }) {
       setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleExport = (type: 'doc' | 'md' | 'html') => {
+  const handleExport = (type: 'rtf' | 'md' | 'html') => {
     if (!editor) return;
     const filename = (title || 'document').replace(/[^a-z0-9]/gi, '_').toLowerCase();
     
-    if (type === 'doc') {
-        // NATIVE WORD EXPORT (No libraries required)
-        // We construct a special HTML file with Microsoft Word XML Namespaces.
-        // Word recognizes this format and opens it as a formatted document.
-        const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>";
-        const postHtml = "</body></html>";
-        
-        const html = preHtml + `<h1>${title}</h1>` + editor.getHTML() + postHtml;
-
-        const blob = new Blob(['\ufeff', html], {
-            type: 'application/msword'
-        });
-        
-        saveAs(blob, `${filename}.doc`);
-        
+    if (type === 'rtf') {
+        // RICH TEXT FORMAT (RTF) EXPORT
+        // Safe for mobile, opens in Word/Docs, preserves Bold/Headings
+        const rtfContent = convertHtmlToRtf(`<h1>${title}</h1>` + editor.getHTML());
+        const blob = new Blob([rtfContent], { type: 'application/rtf' });
+        saveAs(blob, `${filename}.rtf`);
     } else {
         const contentToSave = type === 'html' 
             ? `<html><head><title>${title}</title></head><body><h1>${title}</h1>${editor.getHTML()}</body></html>` 
@@ -198,8 +233,8 @@ export default function Editor({ params }: { params: { id: string } }) {
                 </button>
                 {isExportOpen && (
                     <div className="absolute top-full right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                        <button onClick={() => handleExport('doc')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors border-b border-border/50 flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-blue-600"/> Download Word (.doc)
+                        <button onClick={() => handleExport('rtf')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors border-b border-border/50 flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-blue-600"/> Download Rich Text (.rtf)
                         </button>
                         <button onClick={() => handleExport('md')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors border-b border-border/50">Download Markdown</button>
                         <button onClick={() => handleExport('html')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors">Download HTML</button>

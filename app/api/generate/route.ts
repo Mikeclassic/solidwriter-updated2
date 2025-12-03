@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     }
 
     // --- 2. STREAMING TASKS ---
-    // UPDATED INSTRUCTION: Enforce Markdown, Ban HTML
+    // NO HTML INSTRUCTION:
     const cleanInstruction = "Format the output using Markdown. Use # for Main Headings, ## for Subheadings, and ** for Bold. Do NOT use HTML tags (no <h1>, <br>, etc). Do not wrap the response in ```markdown code blocks.";
 
     if (type === "article") {

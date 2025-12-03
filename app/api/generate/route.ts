@@ -47,14 +47,27 @@ export async function POST(req: Request) {
     let systemPrompt = "";
     let userPrompt = "";
 
+    // --- HANDLE BRAND VOICE ---
+    let actualToneInstruction = `Tone: ${tone}.`;
+    
+    if (tone === "My Brand Voice") {
+        if (user.brandVoice) {
+            actualToneInstruction = `Adopt the user's specific Brand Voice. 
+            Here is a sample of their writing style: "${user.brandVoice}". 
+            Mimic this style, vocabulary, and sentence structure exactly.`;
+        } else {
+            actualToneInstruction = "Tone: Professional (User selected Brand Voice but hasn't set it up yet).";
+        }
+    }
+
     // --- 1. JSON TASKS (Blocking/Fast) ---
     if (type === "titles" || type === "outline") {
         if (type === "titles") {
             systemPrompt = "You are an SEO expert. Return ONLY a raw JSON array of 5 catchy, SEO-optimized blog titles. Example: [\"Title 1\", \"Title 2\"]. Do not output any other text.";
-            userPrompt = `Topic: ${topic}. Keywords: ${keywords}. Tone: ${tone}.`;
+            userPrompt = `Topic: ${topic}. Keywords: ${keywords}. ${actualToneInstruction}`;
         } else {
             systemPrompt = "You are a content strategist. Return ONLY a raw JSON array of 6-8 distinct section headers (H2s). Example: [\"Intro\", \"Point 1\"]. Do not output any other text.";
-            userPrompt = `Title: ${title}. Tone: ${tone}. Keywords: ${keywords}`;
+            userPrompt = `Title: ${title}. ${actualToneInstruction} Keywords: ${keywords}`;
         }
 
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -77,27 +90,26 @@ export async function POST(req: Request) {
     }
 
     // --- 2. STREAMING TASKS ---
-    // UPDATED: Output HTML for Tiptap Editor
     const cleanInstruction = "Format the output using HTML tags (e.g. <h2>, <p>, <ul>, <li>, <strong>). Do NOT use Markdown (#, *). Do NOT include <html> or <body> tags. Output only the body content.";
 
     if (type === "article") {
-        systemPrompt = `You are an expert writer. Write a comprehensive blog post. Tone: ${tone}. ${cleanInstruction}`;
+        systemPrompt = `You are an expert writer. Write a comprehensive blog post. ${actualToneInstruction} ${cleanInstruction}`;
         userPrompt = `Title: ${title}\n\nOutline Structure:\n${JSON.stringify(outline)}\n\nWrite the full article now.`;
     } else if (type === "social") {
-        systemPrompt = `You are a social media expert for ${platform}. Write 3 distinct post options. Tone: ${tone}. ${cleanInstruction}`;
+        systemPrompt = `You are a social media expert for ${platform}. Write 3 distinct post options. ${actualToneInstruction} ${cleanInstruction}`;
         userPrompt = `Topic: ${topic}\nKeywords: ${keywords}`;
     } else if (type === "ads") {
-        systemPrompt = `You are a PPC expert for ${platform} Ads. Write 3 variations. Tone: ${tone}. ${cleanInstruction}`;
+        systemPrompt = `You are a PPC expert for ${platform} Ads. Write 3 variations. ${actualToneInstruction} ${cleanInstruction}`;
         userPrompt = `Product: ${topic}\nTarget: ${keywords}`;
     } else if (type === "copywriting") {
-        systemPrompt = `Master copywriter using the ${framework} framework. Tone: ${tone}. ${cleanInstruction}`;
+        systemPrompt = `Master copywriter using the ${framework} framework. ${actualToneInstruction} ${cleanInstruction}`;
         userPrompt = `Topic: ${topic}\nContext: ${keywords}`;
     } else {
         // --- EDITOR ASSISTANT LOGIC ---
         systemPrompt = `You are a professional editor. You will receive existing content (HTML) and an instruction. You must rewrite the ENTIRE content to satisfy the instruction. 
         - If "shorten", output the full shortened version. 
         - If "add intro", output the full text with intro.
-        - Tone: ${tone || "Professional"}. 
+        - ${actualToneInstruction} 
         - ${cleanInstruction}`;
         
         userPrompt = `EXISTING CONTENT:\n"${currentContent}"\n\nINSTRUCTION: ${body.prompt}\n\nREWRITTEN CONTENT:`;

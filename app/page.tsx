@@ -39,7 +39,7 @@ import SmartStartButton from "@/components/smart-start-button";
           </div>
         </div>
         <div className="max-w-6xl mx-auto pt-8 border-t border-slate-800 text-xs text-center md:text-left">
-          © 2024 Solidwriter Inc. All rights reserved.
+          © 2025 Solidwriter Inc. All rights reserved.
         </div>
       </footer>
     </div>

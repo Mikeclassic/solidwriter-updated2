@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
-// @ts-ignore
-import htmlDocx from 'html-docx-js/dist/html-docx';
 import { saveAs } from 'file-saver';
 
 // AI Command Templates
@@ -87,37 +85,19 @@ export default function Editor({ params }: { params: { id: string } }) {
     const filename = (title || 'document').replace(/[^a-z0-9]/gi, '_').toLowerCase();
     
     if (type === 'doc') {
-        // REAL .DOCX EXPORT
-        // We wrap the content in a basic HTML structure that html-docx-js expects
-        const contentHtml = `
-            <!DOCTYPE html>
-            <html>
-                <head>
-                    <meta charset="utf-8">
-                    <title>${title}</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; font-size: 11pt; }
-                        h1 { font-size: 24px; font-weight: bold; }
-                        h2 { font-size: 18px; font-weight: bold; }
-                        p { margin-bottom: 10px; }
-                    </style>
-                </head>
-                <body>
-                    <h1>${title}</h1>
-                    ${editor.getHTML()}
-                </body>
-            </html>
-        `;
+        // NATIVE WORD EXPORT (No libraries required)
+        // We construct a special HTML file with Microsoft Word XML Namespaces.
+        // Word recognizes this format and opens it as a formatted document.
+        const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>";
+        const postHtml = "</body></html>";
+        
+        const html = preHtml + `<h1>${title}</h1>` + editor.getHTML() + postHtml;
 
-        try {
-            // Convert HTML string to a Blob representing a real .docx file
-            const converted = htmlDocx.asBlob(contentHtml);
-            // Use file-saver to handle the download, which works better on mobile
-            saveAs(converted, `${filename}.docx`);
-        } catch (e) {
-            console.error(e);
-            alert("Export failed. Please try again.");
-        }
+        const blob = new Blob(['\ufeff', html], {
+            type: 'application/msword'
+        });
+        
+        saveAs(blob, `${filename}.doc`);
         
     } else {
         const contentToSave = type === 'html' 
@@ -125,7 +105,6 @@ export default function Editor({ params }: { params: { id: string } }) {
             : editor.getText();
         
         const blob = new Blob([contentToSave], { type: type === 'html' ? 'text/html' : 'text/markdown' });
-        // Use file-saver here too for consistency
         saveAs(blob, `${filename}.${type}`);
     }
     setIsExportOpen(false);
@@ -220,7 +199,7 @@ export default function Editor({ params }: { params: { id: string } }) {
                 {isExportOpen && (
                     <div className="absolute top-full right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                         <button onClick={() => handleExport('doc')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors border-b border-border/50 flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-blue-600"/> Download Word (.docx)
+                            <FileText className="h-4 w-4 text-blue-600"/> Download Word (.doc)
                         </button>
                         <button onClick={() => handleExport('md')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors border-b border-border/50">Download Markdown</button>
                         <button onClick={() => handleExport('html')} className="w-full text-left px-4 py-3 text-sm hover:bg-secondary transition-colors">Download HTML</button>

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Save, Sparkles, Loader2, Bot, Download, ChevronDown, X, Copy, Check, Undo } from "lucide-react";
+import { ArrowLeft, Save, Sparkles, Loader2, Bot, Download, ChevronDown, X, Copy, Check, Undo, Redo } from "lucide-react";
 import Link from "next/link";
 import jsPDF from "jspdf";
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -18,7 +18,9 @@ const AI_COMMANDS = [
     "Make Professional",
     "Make Casual / Witty",
     "Improve Flow",
-    "Summarize Key Points"
+    "Summarize Key Points",
+    "Turn into Bullet Points",
+    "Write a catchy Headline"
 ];
 
 export default function Editor({ params }: { params: { id: string } }) {
@@ -42,7 +44,7 @@ export default function Editor({ params }: { params: { id: string } }) {
     editorProps: {
       attributes: {
         class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl m-5 focus:outline-none max-w-none',
-        id: 'editor-content' // ID for PDF generation
+        id: 'editor-content'
       },
     },
   });
@@ -72,53 +74,65 @@ export default function Editor({ params }: { params: { id: string } }) {
 
   const handleCopy = () => {
       if (!editor) return;
-      const text = editor.getText(); // Or getHTML() if you want to copy formatting to clipboard
+      // Copy HTML to clipboard for rich text support in some apps, 
+      // but usually plain text is safer for general use. 
+      // Here we grab text. To support rich copy, we need the Clipboard API with 'text/html'.
+      const text = editor.getText();
       navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleExport = (type: 'pdf' | 'md' | 'html') => {
+  const handleExport = async (type: 'pdf' | 'md' | 'html') => {
     if (!editor) return;
     const filename = (title || 'document').replace(/[^a-z0-9]/gi, '_').toLowerCase();
     
     if (type === 'pdf') {
-        // RICH TEXT PDF EXPORT
-        const doc = new jsPDF({
-            orientation: 'portrait',
-            unit: 'pt',
-            format: 'a4'
-        });
+        try {
+            const doc = new jsPDF({
+                orientation: 'portrait',
+                unit: 'pt',
+                format: 'a4'
+            });
 
-        const editorElement = document.querySelector('#editor-content') as HTMLElement;
-        
-        if (editorElement) {
-            // We create a temporary container to enforce PDF width styling
+            // 1. Create a visible container off-screen (fixes unresponsiveness)
+            // html2canvas needs the element to be in the DOM and visible (not display:none)
             const tempContainer = document.createElement('div');
-            tempContainer.innerHTML = `<h1>${title}</h1>` + editor.getHTML();
-            tempContainer.style.width = '550px'; // Force A4 width approximate
-            tempContainer.style.padding = '20px';
-            tempContainer.style.fontFamily = 'Arial, sans-serif';
-            // Append to body temporarily to render
-            tempContainer.style.position = 'absolute';
-            tempContainer.style.left = '-9999px';
+            tempContainer.className = 'prose'; // Use same tailwind typography
+            tempContainer.style.width = '595px'; // A4 width in px (approx) at 72dpi
+            tempContainer.style.padding = '40px';
+            tempContainer.style.background = 'white';
+            tempContainer.style.position = 'fixed'; // Fixed prevents scrolling issues
+            tempContainer.style.left = '0';
+            tempContainer.style.top = '0';
+            tempContainer.style.zIndex = '-9999'; // Behind everything
+            
+            // Add Title and Content
+            tempContainer.innerHTML = `<h1 style="margin-bottom: 20px; font-size: 24px; font-weight: bold;">${title}</h1>` + editor.getHTML();
+            
             document.body.appendChild(tempContainer);
 
-            doc.html(tempContainer, {
+            // 2. Generate PDF
+            await doc.html(tempContainer, {
                 callback: function(pdf) {
                     pdf.save(`${filename}.pdf`);
-                    document.body.removeChild(tempContainer);
+                    document.body.removeChild(tempContainer); // Cleanup
                 },
-                x: 20,
-                y: 20,
-                width: 550, // Target width in PDF units
-                windowWidth: 650 // Window width to simulate resolution
+                x: 0,
+                y: 0,
+                width: 595, // Matches A4 width in points
+                windowWidth: 595, // Crucial for responsive layout scaling
+                autoPaging: 'text', // Prevents cutting text in half
+                margin: [20, 20, 20, 20]
             });
+        } catch (error) {
+            console.error("PDF Generation failed", error);
+            alert("Could not generate PDF. Please try again.");
         }
     } else {
         const contentToSave = type === 'html' 
             ? `<html><head><title>${title}</title></head><body><h1>${title}</h1>${editor.getHTML()}</body></html>` 
-            : editor.getText(); // Plain text for MD for now
+            : editor.getText();
         
         const blob = new Blob([contentToSave], { type: type === 'html' ? 'text/html' : 'text/markdown' });
         const url = URL.createObjectURL(blob);
@@ -181,15 +195,27 @@ export default function Editor({ params }: { params: { id: string } }) {
         </div>
         
         <div className="flex items-center gap-1 md:gap-2">
-            {/* Undo Button */}
-            <button 
-                onClick={() => editor?.chain().focus().undo().run()}
-                disabled={!editor?.can().undo()}
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors disabled:opacity-30"
-                title="Undo"
-            >
-                <Undo className="h-4 w-4 md:h-5 md:w-5"/>
-            </button>
+            
+            {/* Undo / Redo Group */}
+            <div className="flex items-center bg-secondary/50 rounded-lg p-0.5 mr-2">
+                <button 
+                    onClick={() => editor?.chain().focus().undo().run()}
+                    disabled={!editor?.can().undo()}
+                    className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-background rounded-md transition-all disabled:opacity-30"
+                    title="Undo"
+                >
+                    <Undo className="h-4 w-4"/>
+                </button>
+                <div className="w-px h-4 bg-border mx-0.5"></div>
+                <button 
+                    onClick={() => editor?.chain().focus().redo().run()}
+                    disabled={!editor?.can().redo()}
+                    className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-background rounded-md transition-all disabled:opacity-30"
+                    title="Redo"
+                >
+                    <Redo className="h-4 w-4"/>
+                </button>
+            </div>
 
             {/* Copy Button */}
             <button 
@@ -198,7 +224,7 @@ export default function Editor({ params }: { params: { id: string } }) {
                 title="Copy to Clipboard"
             >
                 {copied ? <Check className="h-4 w-4 md:h-5 md:w-5 text-green-600"/> : <Copy className="h-4 w-4 md:h-5 md:w-5"/>}
-                {copied && <span className="absolute top-10 right-0 bg-black text-white text-xs px-2 py-1 rounded shadow-lg">Copied!</span>}
+                {copied && <span className="absolute top-10 right-0 bg-black text-white text-xs px-2 py-1 rounded shadow-lg z-50">Copied!</span>}
             </button>
 
             {/* Export Dropdown */}

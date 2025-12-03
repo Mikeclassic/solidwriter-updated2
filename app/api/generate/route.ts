@@ -77,8 +77,8 @@ export async function POST(req: Request) {
     }
 
     // --- 2. STREAMING TASKS ---
-    // NO HTML INSTRUCTION:
-    const cleanInstruction = "Format the output using Markdown. Use # for Main Headings, ## for Subheadings, and ** for Bold. Do NOT use HTML tags (no <h1>, <br>, etc). Do not wrap the response in ```markdown code blocks.";
+    // UPDATED: Output HTML for Tiptap Editor
+    const cleanInstruction = "Format the output using HTML tags (e.g. <h2>, <p>, <ul>, <li>, <strong>). Do NOT use Markdown (#, *). Do NOT include <html> or <body> tags. Output only the body content.";
 
     if (type === "article") {
         systemPrompt = `You are an expert writer. Write a comprehensive blog post. Tone: ${tone}. ${cleanInstruction}`;
@@ -93,11 +93,10 @@ export async function POST(req: Request) {
         systemPrompt = `Master copywriter using the ${framework} framework. Tone: ${tone}. ${cleanInstruction}`;
         userPrompt = `Topic: ${topic}\nContext: ${keywords}`;
     } else {
-        // --- EDITOR ASSISTANT LOGIC (Context Aware) ---
-        systemPrompt = `You are a professional editor. You will receive existing content and an instruction. You must rewrite the ENTIRE content to satisfy the instruction. 
-        - If the user asks to "shorten", output the full shortened version. 
-        - If "add intro", output the full text with the intro added.
-        - Do NOT simply output the new part. Output the COMPLETE final text.
+        // --- EDITOR ASSISTANT LOGIC ---
+        systemPrompt = `You are a professional editor. You will receive existing content (HTML) and an instruction. You must rewrite the ENTIRE content to satisfy the instruction. 
+        - If "shorten", output the full shortened version. 
+        - If "add intro", output the full text with intro.
         - Tone: ${tone || "Professional"}. 
         - ${cleanInstruction}`;
         
@@ -124,7 +123,6 @@ export async function POST(req: Request) {
             });
 
             if (documentId) {
-                // We overwrite the content because the AI is rewriting the whole thing
                 await db.document.update({
                     where: { id: documentId },
                     data: { content: completion }

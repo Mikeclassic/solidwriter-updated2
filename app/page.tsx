@@ -1,3 +1,4 @@
+// ... imports equal to previous versions ...
 "use client";
 
 import Link from "next/link";
@@ -5,7 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { Check, Bot, PenTool, ChevronDown, ChevronUp, Copy, RefreshCw, Star, PlayCircle, ArrowRight, LayoutTemplate, Zap, MessageSquare, Menu, X } from "lucide-react";
 import SmartStartButton from "@/components/smart-start-button";
 
-// TESTIMONIALS
+// EXPANDED TESTIMONIALS
 const RAW_TESTIMONIALS = [
   { name: "Sarah Johnson", role: "Content Manager", img: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop", text: "Solidwriter cut my workflow in half. Ideally suited for agencies." },
   { name: "Mark Williams", role: "SEO Specialist", img: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop", text: "The ranking capability of these articles is unmatched. A game changer." },
@@ -15,10 +16,22 @@ const RAW_TESTIMONIALS = [
   { name: "Michael Brown", role: "Freelancer", img: "https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=100&h=100&fit=crop", text: "My clients can't tell the difference. It's that good." },
   { name: "Lisa Wong", role: "Social Media Lead", img: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop", text: "Repurposing blogs into LinkedIn posts takes seconds now." },
   { name: "James Carter", role: "Tech Blogger", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop", text: "The technical accuracy of the reasoning engine is impressive." },
+  // 10 NEW TESTIMONIALS
+  { name: "Amanda Lee", role: "Course Creator", img: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&h=100&fit=crop", text: "I wrote my entire email sequence using the Brand Voice feature. Incredible." },
+  { name: "Tom Baker", role: "Startup CEO", img: "https://images.unsplash.com/photo-1500917293891-ef795e70e1f6?w=100&h=100&fit=crop", text: "The best ROI tool in our stack. It pays for itself in one day." },
+  { name: "Sophie Turner", role: "Travel Blogger", img: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=100&h=100&fit=crop", text: "It understands nuance better than any other AI I've tried." },
+  { name: "Ryan Go", role: "Ecommerce Owner", img: "https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=100&h=100&fit=crop", text: "Product descriptions used to be a pain. Now they are done in minutes." },
+  { name: "Kelly Martin", role: "PR Specialist", img: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&h=100&fit=crop", text: "Press releases that actually get picked up. Highly recommended." },
+  { name: "Daniel Park", role: "Ghostwriter", img: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=100&h=100&fit=crop", text: "The outline generator prevents writer's block every single time." },
+  { name: "Olivia Wilson", role: "Non-Profit", img: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=100&h=100&fit=crop", text: "Helping us spread our message faster and cheaper." },
+  { name: "Ethan Hunt", role: "Developer", img: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&h=100&fit=crop", text: "I use it for technical documentation and READMEs. A lifesaver." },
+  { name: "Grace Liu", role: "Real Estate Agent", img: "https://images.unsplash.com/photo-1598550874175-4d7112ee7f43?w=100&h=100&fit=crop", text: "Listing descriptions are now catchy and SEO friendly." },
+  { name: "Chris Evans", role: "Fitness Coach", img: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop", text: "Engaging my audience on Instagram has never been easier." }
 ];
 
-const TESTIMONIALS = [...RAW_TESTIMONIALS, ...RAW_TESTIMONIALS, ...RAW_TESTIMONIALS, ...RAW_TESTIMONIALS];
+const TESTIMONIALS = [...RAW_TESTIMONIALS, ...RAW_TESTIMONIALS];
 
+// ... rest of the file (FAQS, DEMO STEPS, etc) remains unchanged ...
 // FAQ
 const FAQS = [
   { q: "How does the AI writing assistant work?", a: "Solidwriter uses a chain-of-thought reasoning engine. Unlike standard chatbots, it plans the structure of your content first, then writes section by section to ensure logical flow and factual accuracy." },

@@ -61,6 +61,12 @@ export default function Dashboard() {
   const usagePercent = Math.min((usage.apiUsage / usage.usageLimit) * 100, 100);
   const formatNumber = (num: number) => new Intl.NumberFormat('en-US').format(num);
 
+  // Helper to strip HTML for preview
+  const getPreview = (html: string) => {
+      if (!html) return "No content yet...";
+      return html.replace(/<[^>]*>?/gm, '').substring(0, 120) + "...";
+  };
+
   return (
     <div className="min-h-screen bg-secondary/30">
         <div className="max-w-6xl mx-auto p-4 md:p-8">
@@ -154,15 +160,26 @@ export default function Dashboard() {
             ) : (
                 <>
                     <h2 className="text-lg font-bold mb-4">Recent Documents</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                         {docs.map((doc) => (
                             <Link href={`/editor/${doc.id}`} key={doc.id} className="block group">
-                                <div className="bg-card p-6 rounded-2xl border h-40 flex flex-col justify-between group-hover:border-primary transition-all shadow-sm group-hover:shadow-md">
+                                <div className="bg-card p-4 rounded-xl border hover:border-primary transition-all shadow-sm hover:shadow-md flex flex-col gap-2 h-full">
                                     <div className="flex items-start gap-3">
-                                        <div className="p-2 bg-primary/10 rounded-xl text-primary"><FileText className="h-6 w-6"/></div>
+                                        <div className="p-2 bg-primary/10 rounded-lg text-primary shrink-0 mt-0.5">
+                                            <FileText className="h-5 w-5"/>
+                                        </div>
                                         <div className="flex-1 min-w-0">
-                                            <h3 className="font-semibold truncate">{doc.title}</h3>
-                                            <p className="text-xs text-muted-foreground">{new Date(doc.updatedAt).toLocaleDateString()}</p>
+                                            <div className="flex justify-between items-start gap-2">
+                                                <h3 className="font-semibold text-sm md:text-base leading-snug line-clamp-2 text-foreground group-hover:text-primary transition-colors">
+                                                    {doc.title}
+                                                </h3>
+                                                <span className="text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded shrink-0">
+                                                    {new Date(doc.updatedAt).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed opacity-80">
+                                                {getPreview(doc.content)}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>

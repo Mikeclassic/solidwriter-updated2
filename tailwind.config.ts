@@ -25,7 +25,6 @@ const config: Config = {
         popover: { DEFAULT: "var(--popover)", foreground: "var(--popover-foreground)" },
         card: { DEFAULT: "var(--card)", foreground: "var(--card-foreground)" },
       },
-      // NEW: Animations for Testimonials
       animation: {
         scroll: "scroll 40s linear infinite",
       },
@@ -37,6 +36,6 @@ const config: Config = {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 };
 export default config;

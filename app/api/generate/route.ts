@@ -77,7 +77,8 @@ export async function POST(req: Request) {
     }
 
     // --- 2. STREAMING TASKS ---
-    const cleanInstruction = "Output clean HTML (e.g. <h2>, <p>). Do not use Markdown (#, *) and do not include ```html blocks.";
+    // UPDATED INSTRUCTION: Enforce Markdown, Ban HTML
+    const cleanInstruction = "Format the output using Markdown. Use # for Main Headings, ## for Subheadings, and ** for Bold. Do NOT use HTML tags (no <h1>, <br>, etc). Do not wrap the response in ```markdown code blocks.";
 
     if (type === "article") {
         systemPrompt = `You are an expert writer. Write a comprehensive blog post. Tone: ${tone}. ${cleanInstruction}`;

@@ -45,6 +45,9 @@ model User {
   plan          String     @default("TRIAL")
   trialStart    DateTime   @default(now())
   
+  // NEW: Store the Brand Voice text
+  brandVoice    String?    @db.Text
+  
   accounts      Account[]
   sessions      Session[]
   documents     Document[]
@@ -60,7 +63,6 @@ model Document {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// NEW: For Forgot Password
 model PasswordResetToken {
   id        String   @id @default(cuid())
   email     String

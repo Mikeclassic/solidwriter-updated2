@@ -5,7 +5,9 @@ import { db } from "@/lib/db";
 import OpenAI from "openai";
 import { OpenAIStream, StreamingTextResponse } from "ai";
 
-export const maxDuration = 60;
+// Increase max duration to avoid timeouts on supported plans (Pro)
+// On Hobby, this is limited to 10s (or 60s sometimes), so timeouts may still occur if the model is slow.
+export const maxDuration = 300; 
 
 const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
@@ -42,7 +44,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { type, topic, keywords, tone, title, outline, documentId, platform, framework, currentContent } = body;
+    const { type, topic, keywords, tone, title, outline, documentId, platform, framework, currentContent, recipient, goal } = body;
 
     let systemPrompt = "";
     let userPrompt = "";
@@ -98,6 +100,10 @@ export async function POST(req: Request) {
     } else if (type === "social") {
         systemPrompt = `You are a social media expert for ${platform}. Write 3 distinct post options. ${actualToneInstruction} ${cleanInstruction}`;
         userPrompt = `Topic: ${topic}\nKeywords: ${keywords}`;
+    } else if (type === "email") {
+        // NEW EMAIL LOGIC
+        systemPrompt = `You are an expert email copywriter. Write a compelling email. ${actualToneInstruction} ${cleanInstruction}`;
+        userPrompt = `Subject: ${topic}\nRecipient: ${recipient}\nGoal/CTA: ${goal}\nKeywords: ${keywords}`;
     } else if (type === "ads") {
         systemPrompt = `You are a PPC expert for ${platform} Ads. Write 3 variations. ${actualToneInstruction} ${cleanInstruction}`;
         userPrompt = `Product: ${topic}\nTarget: ${keywords}`;

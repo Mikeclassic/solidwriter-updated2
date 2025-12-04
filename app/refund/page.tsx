@@ -11,7 +11,7 @@ export default function RefundPage() {
       </header>
       <main className="max-w-3xl mx-auto py-16 px-6 prose dark:prose-invert">
         <h1 className="text-4xl font-bold mb-8">Refund Policy</h1>
-        <p className="text-muted-foreground mb-8">Last updated: January 2025</p>
+        <p className="text-muted-foreground mb-8">Last updated: December 2025</p>
         
         <h2 className="text-2xl font-bold mt-8 mb-4">1. 14-Day Money-Back Guarantee</h2>
         <p>We want you to be completely satisfied with Solidwriter. If you are not satisfied with your purchase, you may request a refund within <strong>14 days</strong> of the initial transaction date.</p>

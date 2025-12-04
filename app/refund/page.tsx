@@ -11,23 +11,20 @@ export default function RefundPage() {
       </header>
       <main className="max-w-3xl mx-auto py-16 px-6 prose dark:prose-invert">
         <h1 className="text-4xl font-bold mb-8">Refund Policy</h1>
-        <p className="text-muted-foreground mb-8">Last updated: December 2025</p>
+        <p className="text-muted-foreground mb-8">Last updated: January 2025</p>
         
-        <h2 className="text-2xl font-bold mt-8 mb-4">1. Free Trial</h2>
-        <p>We offer a 7-day free trial for all plans. You will not be charged if you cancel your subscription before the trial period ends.</p>
+        <h2 className="text-2xl font-bold mt-8 mb-4">1. 14-Day Money-Back Guarantee</h2>
+        <p>We want you to be completely satisfied with Solidwriter. If you are not satisfied with your purchase, you may request a refund within <strong>14 days</strong> of the initial transaction date.</p>
         
-        <h2 className="text-2xl font-bold mt-8 mb-4">2. Subscription Cancellation</h2>
-        <p>You may cancel your subscription at any time. Upon cancellation, your access to premium features will continue until the end of your current billing cycle. We do not provide partial refunds for unused time in the current billing cycle.</p>
+        <h2 className="text-2xl font-bold mt-8 mb-4">2. How to Request a Refund</h2>
+        <p>To request a refund, please contact our support team at <a href="mailto:support@solidwriter.com" className="text-primary underline">support@solidwriter.com</a>. Please provide your transaction ID or the email address used for the purchase.</p>
+        <p>As our Merchant of Record, Paddle handles all payment processing and refunds. Once we verify your request is within the 14-day window, Paddle will process the refund to your original payment method.</p>
         
-        <h2 className="text-2xl font-bold mt-8 mb-4">3. Refund Eligibility</h2>
-        <p>Since a free trial is provided to test the service, refunds are generally not issued once a payment is processed. However, exceptions may be made in the following cases:</p>
-        <ul className="list-disc pl-6 mb-4 space-y-2">
-            <li>Technical issues prevented you from using the service.</li>
-            <li>You were charged due to a billing error.</li>
-        </ul>
+        <h2 className="text-2xl font-bold mt-8 mb-4">3. Subscription Cancellation</h2>
+        <p>You may cancel your subscription at any time. If you cancel after the 14-day refund window, you will continue to have access to the premium features until the end of your current billing cycle, but no refund will be issued for the remaining time.</p>
         
-        <h2 className="text-2xl font-bold mt-8 mb-4">4. Contact Us</h2>
-        <p>If you believe you are eligible for a refund, please contact us at <a href="mailto:support@solidwriter.com" className="text-primary underline">support@solidwriter.com</a> with your transaction details.</p>
+        <h2 className="text-2xl font-bold mt-8 mb-4">4. Fraud and Abuse</h2>
+        <p>Refunds are provided at the sole discretion of Paddle and Solidwriter. We reserve the right to refuse a refund request if we find evidence of fraud, refund abuse, or other manipulative behavior that violates our Terms of Service.</p>
       </main>
     </div>
   );
